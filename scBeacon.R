@@ -11,7 +11,7 @@ library(ggplot2)
 # set working directory to where datasets are stored
 setwd(data_dir)
 
-#generate full transcriptome ensambl_gene_id, entrezgene ud, gene name mapping table
+# generate full transcriptome ensambl_gene_id, entrezgene ud, gene name mapping table
 # this table will be used as a gene id ~ name converter and force all datasets to have the same gene profile
 gene_id_converter <- function(species="hsapiens"){
   mart <- useDataset(paste(species, "_gene_ensembl", sep = ""), useMart("ensembl")) #choose hsapiens_gene_ensembl from bioMart database
@@ -22,6 +22,7 @@ gene_id_converter <- function(species="hsapiens"){
 table <- gene_id_converter(species="hsapiens") 
 table <- table[-which(table$external_gene_name == ""),] # remove genes that don't have gene names
 
+# generate ranked centroid and matrix(optional) from clusters                       
 generate_centroids <- function(files, species = "hsapiens"){
   for (f in files){
     message(f)
@@ -49,7 +50,8 @@ generate_centroids <- function(files, species = "hsapiens"){
     setwd(paste(data_dir, dataset, sep="/"))
   }}
 
-dirs <- list.dirs(path=".",full.names=TRUE, recursive=FALSE) #list the directories of datasets
+# list the directories of datasets, and run generate_centroids function for each dataset
+dirs <- list.dirs(path=".",full.names=TRUE, recursive=FALSE) 
 for (dir in dirs){
   message(dir)
   setwd(paste(data_dir, dir, sep="/"))
@@ -64,7 +66,7 @@ for (dir in dirs){
   generate_centroids(valid_louvain_clusters, species = "hsapiens")
 }
 
-
+# load centroids to a matrix
 load_centroids <- function(files){
   cell.numbers <- as.numeric(unlist(lapply(files, function(f) tail(unlist(strsplit(f, split="_")), 2)[1])))
   files <- files[which(cell.numbers >= 50)]
@@ -77,18 +79,18 @@ load_centroids <- function(files){
 files <- list.files(path=data_dir, pattern="centroid.csv", recursive=TRUE, full.names = T)
 centroids <- load_centroids(files) #centroids is a matrix of gene by cluster centroids
 
-#compute viper pairwise similarity score between centroids
+# compute viper pairwise similarity score between centroids
 get_similarity <- function(centroids, nn = floor(nrow(centroids) * 0.1))
   return(viperSimilarity(centroids, nn = nn, method = "greater")) 
 
-#compute an empirical cumulative distribution function, then find a threshold of similarity score using quantile of a given probability p
+# compute an empirical cumulative distribution function, then find a threshold of similarity score using quantile of a given probability p
 get_threshold <- function(similarity, p = 0.01, method = c("greater", "less")){
   switch(method, greater = {
     threshold <- quantile(ecdf(similarity[upper.tri(similarity)]), 1 - p)}, less = {
       threshold <- quantile(ecdf(similarity[upper.tri(similarity)]), p)})
   return(threshold)}
 
-#compute adjacency matrix, only connect centroids that have similarity score above the threshold, then use louvain clustering to find clusters
+# compute adjacency matrix, only connect centroids that have similarity score above the threshold, then use louvain clustering to find clusters
 cluster_centroids <- function(centroids, p=0.01, nn=floor(nrow(centroids)*0.1), verbose=F){
   similarity <- get_similarity(centroids, nn=nn)
   threshold <- get_threshold(similarity, p=p, method="greater")
@@ -96,16 +98,16 @@ cluster_centroids <- function(centroids, p=0.01, nn=floor(nrow(centroids)*0.1), 
   cluster <- cluster_louvain(g)
   return(cluster)}
 
-#meta-clusters information is included in the variable clusters
+# meta-clusters information is included in the variable clusters
 clusters <- cluster_centroids(centroids, p=0.01, nn=floor(nrow(centroids)*0.1), verbose=F)
 
-#function for computing signature matrix from meta-clusters
+# function for computing signature matrix from meta-clusters
 generate_signature_matrix <- function(clusters){
   #compute meta-cluster gene expression profile by taking the average of centroids
   clusters.mean <- list()
   names(clusters$membership) <- clusters$names
   for (cluster in unique(clusters$membership)){
-    # if there are more than one centroid in a meta-cluster, compute average expression
+    # if there are more than one centroid in a meta-cluster, compute the average expression
     if (length(names(which(clusters$membership==cluster))) > 1){
       exp.mean <- apply(centroids[, names(which(clusters$membership==cluster))], 1, mean)
       clusters.mean[[cluster]] <- exp.mean
