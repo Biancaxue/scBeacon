@@ -8,7 +8,9 @@ library(survminer)
 library(survival)
 library(ggplot2)
 
+# set working directory to where datasets are stored
 setwd(data_dir)
+
 #generate full transcriptome ensambl_gene_id, entrezgene ud, gene name mapping table
 # this table will be used as a gene id ~ name converter and force all datasets to have the same gene profile
 gene_id_converter <- function(species="hsapiens"){
