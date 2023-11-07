@@ -12,3 +12,5 @@ scBeacon.R: The script that integrates the clusters generated from EBI_datasets_
 multimodel_analysis.py: In this script, we fit multi-model on TCGA CIBERSORT results. Multi-model fitting will be applied per signature and per tumor type. We only keep the ones that have bi-modality and save the parameters.
 
 survival_analysis.R: run multi-variant survival analysis based on CIBERSORT results
+
+CIBERSORT.R: CIBERSORT() function call, v1.0.4 (10-24-2016)
